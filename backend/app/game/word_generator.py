@@ -1,15 +1,17 @@
-from typing import Dict
+from typing import Dict, Set, List
 import os
+from abc import ABC, abstractmethod
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 
-class WordGenerator:
-    def __init__(self, api_key: str = None):
-        if not api_key:
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-            if not api_key:
-                raise ValueError("No API key provided and ANTHROPIC_API_KEY environment variable is not set")
-        self.client = Anthropic(api_key=api_key)
+class BaseWordGenerator(ABC):
+    """Abstract base class for word generators."""
+    def __init__(self):
         self.valid_sizes = {36, 42, 48, 49, 54, 56, 60, 63, 64, 70, 72, 77, 80, 81, 90, 100}
+
+    @abstractmethod
+    def generate_completion(self, prompt: str) -> str:
+        """Generate a completion from the LLM."""
+        pass
 
     def generate_word_set(self, seed_word: str = None) -> Dict[str, str]:
         """Generate a themed set of words for the game."""
@@ -19,15 +21,10 @@ class WordGenerator:
                 prompt = self._create_prompt(seed_word, attempt > 0)
                 print(f"Attempt {attempt + 1}: Sending prompt to LLM")
                 
-                response = self.client.completions.create(
-                    prompt=f"{HUMAN_PROMPT} {prompt} {AI_PROMPT}",
-                    model="claude-2.1",
-                    max_tokens_to_sample=1024,
-                    stop_sequences=[HUMAN_PROMPT]
-                )
+                response = self.generate_completion(prompt)
+                print(f"Raw LLM response: {response}")
                 
-                print(f"Raw LLM response: {response.completion}")
-                result = self._parse_response(response.completion)
+                result = self._parse_response(response)
                 print(f"Parsed result: {result}")
                 
                 # Validate total letter count
@@ -133,3 +130,46 @@ Words: [5-7 related words]"""
         except Exception as e:
             print(f"Error parsing LLM response: {str(e)}")  # Log the error
             raise Exception(f"Failed to parse LLM response: {str(e)}")
+
+class AnthropicWordGenerator(BaseWordGenerator):
+    """Word generator using Anthropic's Claude API."""
+    def __init__(self, api_key: str = None):
+        super().__init__()
+        if not api_key:
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise ValueError("No API key provided and ANTHROPIC_API_KEY environment variable is not set")
+        self.client = Anthropic(api_key=api_key)
+
+    def generate_completion(self, prompt: str) -> str:
+        """Generate a completion using Anthropic's Claude API."""
+        response = self.client.completions.create(
+            prompt=f"{HUMAN_PROMPT} {prompt} {AI_PROMPT}",
+            model="claude-2.1",
+            max_tokens_to_sample=1024,
+            stop_sequences=[HUMAN_PROMPT]
+        )
+        return response.completion
+
+# Example of how to add a new LLM implementation:
+"""
+class OpenAIWordGenerator(BaseWordGenerator):
+    def __init__(self, api_key: str = None):
+        super().__init__()
+        if not api_key:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("No API key provided and OPENAI_API_KEY environment variable is not set")
+        self.client = OpenAI(api_key=api_key)
+
+    def generate_completion(self, prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024
+        )
+        return response.choices[0].message.content
+"""
+
+# Default to Anthropic for now
+WordGenerator = AnthropicWordGenerator
