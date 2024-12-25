@@ -21,26 +21,26 @@ class BoardGenerator:
             (1, -1),  (1, 0),  (1, 1)
         ]
 
-    def generate_board(self, spangram: str, words: List[str]) -> Tuple[List[List[str]], dict]:
+    def generate_board(self, special_word: str, words: List[str]) -> Tuple[List[List[str]], dict]:
         """
-        Generate a game board with the spangram and theme words.
-        The spangram is treated as just another word for now, as the path-finding
+        Generate a game board with the special word and theme words.
+        The special word is treated as just another word for now, as the path-finding
         algorithm already handles placing longer words first.
         """
-        # Combine spangram and words
-        all_words = [spangram] + words
+        # Combine special word and words
+        all_words = [special_word] + words
         
         # Generate the board with words
         board, placement_info = self.generate_board_with_words(all_words)
         
-        # Update placement info to separate spangram from other words
-        spangram_path = placement_info['paths'][0]  # First path is spangram
+        # Update placement info to separate special word from other words
+        special_word_path = placement_info['paths'][0]  # First path is special word
         word_paths = placement_info['paths'][1:]    # Rest are theme words
         
         return board, {
-            'spangram': {
-                'word': spangram,
-                'path': spangram_path
+            'special_word': {
+                'word': special_word,
+                'path': special_word_path
             },
             'words': [
                 {'word': word, 'path': path}
@@ -48,15 +48,15 @@ class BoardGenerator:
             ]
         }
 
-    def _try_board_generation(self, rows: int, cols: int, spangram: str, words: List[str], word_lengths: List[Tuple[int, int]]) -> Tuple[List[List[str]], dict]:
+    def _try_board_generation(self, rows: int, cols: int, special_word: str, words: List[str], word_lengths: List[Tuple[int, int]]) -> Tuple[List[List[str]], dict]:
         """Try to generate a board with the given words."""
         # Initialize empty board
         board = [['' for _ in range(cols)] for _ in range(rows)]
-        placement_info = {'spangram': None, 'words': []}
+        placement_info = {'special_word': None, 'words': []}
         placed_positions: Set[Tuple[int, int]] = set()
         
         # Try to place each word
-        all_words = [spangram] + words
+        all_words = [special_word] + words
         for word_idx, word_len in word_lengths:
             word = all_words[word_idx]
             logger.debug(f"Trying to place word: {word} (length {word_len})")
@@ -73,8 +73,8 @@ class BoardGenerator:
                     self._place_word_along_path(board, word, path, placed_positions)
                     
                     # Record placement info
-                    if word_idx == 0:  # spangram
-                        placement_info['spangram'] = {
+                    if word_idx == 0:  # special word
+                        placement_info['special_word'] = {
                             'word': word,
                             'path': path
                         }

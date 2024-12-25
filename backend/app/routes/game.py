@@ -9,7 +9,7 @@ board_generator = BoardGenerator()
 
 class GameResponse(BaseModel):
     theme: str
-    spangram: str
+    special_word: str
     words: List[str]
     board: List[List[str]]
     placement_info: Dict
@@ -36,13 +36,13 @@ async def generate_game(request: GameRequest, authorization: str = Header(None))
         
         # Generate board
         board, placement_info = board_generator.generate_board(
-            word_set['spangram'],
+            word_set['special_word'],
             word_set['words']
         )
         
         return GameResponse(
             theme=word_set['theme'],
-            spangram=word_set['spangram'],
+            special_word=word_set['special_word'],
             words=word_set['words'],
             board=board,
             placement_info=placement_info

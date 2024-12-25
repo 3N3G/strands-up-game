@@ -71,7 +71,7 @@ const GameContainer: React.FC = () => {
                         <GameBoard
                             board={gameState.board}
                             words={gameState.words}
-                            spangram={gameState.spangram}
+                            special_word={gameState.special_word}
                             placementInfo={gameState.placement_info}
                         />
                     </VStack>

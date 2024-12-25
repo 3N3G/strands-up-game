@@ -1,6 +1,6 @@
-from typing import Dict, Set
+from typing import Dict
 import os
-from anthropic import Anthropic
+from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 
 class WordGenerator:
     def __init__(self, api_key: str = None):
@@ -19,21 +19,19 @@ class WordGenerator:
                 prompt = self._create_prompt(seed_word, attempt > 0)
                 print(f"Attempt {attempt + 1}: Sending prompt to LLM")
                 
-                response = self.client.messages.create(
+                response = self.client.completions.create(
+                    prompt=f"{HUMAN_PROMPT} {prompt} {AI_PROMPT}",
                     model="claude-2.1",
-                    max_tokens=1024,
-                    messages=[{
-                        "role": "user",
-                        "content": prompt
-                    }]
+                    max_tokens_to_sample=1024,
+                    stop_sequences=[HUMAN_PROMPT]
                 )
                 
-                print(f"Raw LLM response: {response.content[0].text}")
-                result = self._parse_response(response.content[0].text)
+                print(f"Raw LLM response: {response.completion}")
+                result = self._parse_response(response.completion)
                 print(f"Parsed result: {result}")
                 
                 # Validate total letter count
-                total_letters = len(result['spangram']) + sum(len(word) for word in result['words'])
+                total_letters = len(result['special_word']) + sum(len(word) for word in result['words'])
                 print(f"Total letters: {total_letters}")
                 
                 if total_letters in self.valid_sizes:
@@ -53,55 +51,54 @@ class WordGenerator:
     def _create_prompt(self, seed_word: str = None, is_retry: bool = False) -> str:
         """Create the prompt for the LLM."""
         base_prompt = """
-You are a creative word search puzzle generator. Your task is to generate an engaging theme and set of words that will create an interesting and challenging puzzle.
+Please help me create an educational word definition and wordplay puzzle with the following specifications:
 
-CRITICAL REQUIREMENTS:
-1. The total number of letters in ALL words (including the spangram) MUST equal one of these exact numbers: 36, 42, 48, 49, 54, 56, 60, 63, 64, 70, 72, 77, 80, 81, 90, or 100.
-2. Generate 5-7 theme words plus one spangram.
-3. The spangram must be 8-15 letters long and can be two words.
-4. Theme words should be 3-8 letters each.
-5. All words must cleverly relate to the theme.
+GRID REQUIREMENTS:
+1. Total letter count (all words combined including special word) must be exactly one of: 36, 42, 48, 49, 54, 56, 60, 63, 64, 70, 72, 77, 80, 81, 90, or 100 letters
+2. Include 5-7 regular words plus one special longer word
+3. The special word should be 8-15 letters (can be two words)
+4. Regular words should be 3-8 letters each
+5. All words should connect to one central theme
 
-CREATIVE GUIDELINES:
-1. Instead of using the seed word directly as the theme, use it as inspiration to generate a more specific, surprising, or clever theme.
-2. The theme should be intriguing and not immediately obvious - make players think!
-3. The spangram should be a revealing or clever twist on the theme.
-4. Choose theme words that have interesting connections to each other.
-5. Avoid overly simple or common words - prefer words that are fun to discover.
+THEME GUIDELINES:
+1. Create an educational or entertaining theme 
+2. Make the theme specific and engaging
+3. Choose words that are interesting discoveries
+4. All words should clearly connect to the theme
+5. Use grade-appropriate vocabulary
 
-Examples of creative themes:
-
+Example Format:
 Theme: Not your average fruit stand
-Spangram: dragonfruits
+Special Word: tropicalfruit
 Words: kiwi, mango, guava, papaya, lychee, fig
-[Total: 42 letters - perfect for a 6x7 grid]
+[Total: 42 letters]
 
-Theme: Sounds fishy to me
-Spangram: underwater
-Words: sonar, splash, bubble, wave, fins, dive
-[Total: 36 letters - perfect for a 6x6 grid]
+More Examples:
+Theme: In the Garden
+Special Word: gardenherbs
+Words: coriander, mint, basil, rosemary, thyme, parsley
+[Total: 49 letters]
+
+Theme: Out of this world
+Special Word: telescopesights
+Words: moon, mars, venus, jupiter, saturn, mercury
+[Total: 48 letters]
 
 Theme: Time for a change
-Spangram: clockworks
+Special Word: clockworks
 Words: gear, dial, hands, tick, chime, wind
-[Total: 36 letters - perfect for a 6x6 grid]
-
-Theme: Hidden in plain sight
-Spangram: camouflage
-Words: blend, hide, lurk, mask, cover, spot
-[Total: 36 letters - perfect for a 6x6 grid]
+[Total: 36 letters]
 
 Please provide:
-Theme: [an intriguing theme that makes players curious]
-Spangram: [a revealing or clever word that ties the theme together]
-Words: [interesting, thematic words that create satisfying discoveries]
-"""
+Theme: [educational theme]
+Special Word: [thematic word 8-15 letters]
+Words: [5-7 related words]"""
         
         if is_retry:
-            base_prompt += "\n\nPrevious attempt had incorrect letter count. Please try again with different words that sum to one of the valid total sizes."
+            base_prompt += "\n\nPrevious words didn't match required letter counts. Please try again with words that sum to one of the valid total sizes."
         
         if seed_word:
-            base_prompt += f"\n\nUse this word as creative inspiration (NOT necessarily the direct theme): {seed_word}"
+            base_prompt += f"\n\nPlease use this word as inspiration for the theme: {seed_word}"
             
         return base_prompt
 
@@ -114,24 +111,25 @@ Words: [interesting, thematic words that create satisfying discoveries]
             for line in lines:
                 if line.startswith('Theme:'):
                     result['theme'] = line.replace('Theme:', '').strip()
-                elif line.startswith('Spangram:'):
-                    result['spangram'] = line.replace('Spangram:', '').strip()
+                elif line.startswith('Special Word:'):
+                    result['special_word'] = line.replace('Special Word:', '').strip()
                 elif line.startswith('Words:'):
                     words = line.replace('Words:', '').strip()
                     result['words'] = [w.strip() for w in words.split(',')]
             
             # Validate the response
-            if not all(key in result for key in ['theme', 'spangram', 'words']):
+            if not all(key in result for key in ['theme', 'special_word', 'words']):
                 raise ValueError("Invalid response format from LLM")
             
             # Additional validation
-            if len(result['spangram']) < 8:
-                raise ValueError(f"Spangram '{result['spangram']}' is too short (must be at least 8 letters)")
+            if len(result['special_word']) < 8:
+                raise ValueError(f"Special word '{result['special_word']}' is too short (must be at least 8 letters)")
             
             if len(result['words']) < 5:
                 raise ValueError(f"Not enough theme words (got {len(result['words'])}, need at least 5)")
             
             return result
+            
         except Exception as e:
             print(f"Error parsing LLM response: {str(e)}")  # Log the error
-            raise Exception(f"Failed to parse LLM response: {str(e)}") 
+            raise Exception(f"Failed to parse LLM response: {str(e)}")

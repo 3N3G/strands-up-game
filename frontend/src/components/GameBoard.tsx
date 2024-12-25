@@ -16,7 +16,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 interface GameBoardProps {
     board: string[][];
     words: string[];
-    spangram: string;
+    special_word: string;
     placementInfo: PlacementInfo;
 }
 
@@ -25,7 +25,7 @@ type Position = [number, number];
 export const GameBoard: React.FC<GameBoardProps> = ({
     board,
     words,
-    spangram,
+    special_word,
     placementInfo,
 }) => {
     const [selectedCells, setSelectedCells] = useState<Position[]>([]);
@@ -89,7 +89,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         // Check if this path matches any word's path
         const pathStr = pathToString(cells);
         const allPlacements = [
-            { word: spangram, path: placementInfo.spangram.path },
+            { word: special_word, path: placementInfo.special_word.path },
             ...placementInfo.words.map(w => ({ word: w.word, path: w.path }))
         ];
 
@@ -114,8 +114,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
             toast({
                 title: 'Word Found!',
-                description: foundPlacement.word === spangram 
-                    ? 'Congratulations! You found the spangram!' 
+                description: foundPlacement.word === special_word 
+                    ? 'Congratulations! You found the special word!' 
                     : `You found "${foundPlacement.word}"!`,
                 status: 'success',
                 duration: 2000,
@@ -199,7 +199,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 </HStack>
                 {showWordList && (
                     <HStack spacing={2} flexWrap="wrap" justify="center">
-                        {[...words, spangram].map((word) => (
+                        {[...words, special_word].map((word) => (
                             <Text
                                 key={word}
                                 px={2}
@@ -210,7 +210,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                                 fontSize="sm"
                             >
                                 {word}
-                                {word === spangram && ' (spangram)'}
+                                {word === special_word && ' (special word)'}
                             </Text>
                         ))}
                     </HStack>

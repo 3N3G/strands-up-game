@@ -13,7 +13,7 @@ const App: React.FC = () => {
                             Word Search Game
                         </Heading>
                         <Text fontSize="lg" color="gray.600">
-                            Find all the words hidden in the grid, including the special spangram!
+                            Find all the words hidden in the grid, including the special word!
                         </Text>
                     </Box>
                     <GameContainer />
